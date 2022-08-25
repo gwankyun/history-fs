@@ -20,6 +20,7 @@ type MaybeBuilder() =
     member this.Return(x) =
         Some x
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module History =
     let maybe = new MaybeBuilder()
 
@@ -29,15 +30,28 @@ module History =
         IsDir: bool
     }
 
-    let init (path: string) =
-        let history = Extend.Result.Path.tryCombine path ".history"
+    // [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module PathType =
+        type t =
+            | PathType of string
+            member this.Value =
+                match this with
+                | PathType s -> s
+        let create (s: string) = PathType s
+        let value (PathType str) = str 
+
+    let init (path_: PathType.t) =
+        let history = Extend.Result.Path.tryCombine path_.Value ".history"
         let h = history |> Extend.Result.get
         if h |> Extend.Directory.exists |> not then
             Directory.CreateDirectory(h) |> ignore
         h
 
-    let add (name: string) (path: string) (history: string) =
-        Directory.CreateDirectory(Path.Join(history, name)) |> ignore
+    let add (name_: PathType.t) (path_: PathType.t) (history_: PathType.t) =
+        // let name = name_ |> PathType.value
+        // let path = path_ |> PathType.value
+        // let history = history_ |> PathType.value
+        Directory.CreateDirectory(Path.Join(history_.Value, name_.Value)) |> ignore
 
         let toFileTime (x: DateTime) = x.ToLocalTime().ToFileTime()
         let toInfo (isDir: bool) (file: FileSystemInfo) =
@@ -47,16 +61,16 @@ module History =
                 IsDir = isDir
             }
         let files =
-            FileUtils.getAllFiles(path)
+            FileUtils.getAllFiles(path_.Value)
             |> List.map (toInfo false)
         let dirs =
-            FileUtils.getAllDirectories(path)
+            FileUtils.getAllDirectories(path_.Value)
             |> List.map (toInfo true)
         let data =
             dirs
             |> List.append files
-            |> List.map (fun x -> { x with FullName = x.FullName.Substring(path.Length) })
-        let json = Path.Combine(history, name, "data.json")
+            |> List.map (fun x -> { x with FullName = x.FullName.Substring(path_.Value.Length) })
+        let json = Path.Combine(history_.Value, name_.Value, "data.json")
         printfn "%s" json
         data
         |> List.filter (fun x -> x.FullName.StartsWith(".history") |> not)
@@ -78,21 +92,23 @@ module History =
     type Diff = Map<string, Info>
     type DiffResult = Diff option * Diff option * Diff option
 
-    let copy (result: DiffResult) (source: string) (dist: string) =
+    let copy (result: DiffResult) (source_: PathType.t) (dist_: PathType.t) =
+        // let source = source_.Value
+        // let dist = dist_.Value
         match result with
         | Some c, Some m, Some d ->
             printfn "c: %A" c
             let partition (d: Diff) = d |> Map.partition (fun _ v -> v.IsDir)
             let copyFile (f: Diff) =
                 f |> Map.iter (fun k _ ->
-                let oldPath = Path.Join(source, k)
-                let newPath = Path.Join(dist, k)
+                let oldPath = Path.Join(source_.Value, k)
+                let newPath = Path.Join(dist_.Value, k)
                 FileUtility.createDirectoryFor newPath |> ignore
                 File.Copy(oldPath, newPath, true))
             let copyDir (d: Diff) =
                 d 
                 |> Map.iter (fun k _ ->
-                    let path = Path.Combine(dist, k)
+                    let path = Path.Join(dist_.Value, k)
                     if Directory.Exists(path) |> not then
                         Directory.CreateDirectory(path) |> ignore)
 
@@ -119,7 +135,7 @@ module History =
                 |> Option.ofTry
                 |> Option.bind (fun x ->
                     let r = Option.ofTry (fun () ->
-                        let path = Path.Combine(dist, ".history", "data.json")
+                        let path = Path.Join(dist_.Value, ".history", "data.json")
                         FileUtility.createDirectoryFor path |> ignore
                         printfn "path: %A" path
                         File.WriteAllText(path, x))
@@ -128,12 +144,12 @@ module History =
             // |> Option.isSome
         | _ -> false
 
-    let merge (src: string) (dest: string) =
+    let merge (src_: PathType.t) (dest_: PathType.t) =
         // 複製src所有非.history目錄下的文件到dest
-        let sc = Path.TrimEndingDirectorySeparator(src)
-        let ds = Path.TrimEndingDirectorySeparator(dest)
+        let sc = Path.TrimEndingDirectorySeparator(src_.Value)
+        let ds = Path.TrimEndingDirectorySeparator(dest_.Value)
         let history = Path.Join(sc, ".history")
-        FileUtility.copyAll src dest (fun o _ -> o.StartsWith(history) |> not)
+        FileUtility.copyAll src_.Value dest_.Value (fun o _ -> o.StartsWith(history) |> not) |> ignore
 
         let json = Path.Join(history, "data.json")
         if File.Exists(json) then
@@ -149,9 +165,11 @@ module History =
                     if File.Exists(path) then
                         File.Delete(path)
 
-    let compare (path1: string) (path2: string) =
-        let p1 = Path.TrimEndingDirectorySeparator(path1)
-        let p2 = Path.TrimEndingDirectorySeparator(path2)
+    let compare (path1_: PathType.t) (path2_: PathType.t) =
+        // let path1 = path1_ |> PathType.value
+        // let path2 = path2_ |> PathType.value
+        let p1 = Path.TrimEndingDirectorySeparator(path1_.Value)
+        let p2 = Path.TrimEndingDirectorySeparator(path2_.Value)
         match Directory.Exists(p1), Directory.Exists(p2) with
         | true, true ->
             let getRelativePath (path: string) =
@@ -182,18 +200,23 @@ module History =
             // e1 = e2
         | _ -> false
 
-    let diff (history: string) (newPath: string) (oldPath: string) : DiffResult =
+    let diff (history_: PathType.t) (newPath_: PathType.t) (oldPath_: PathType.t) : DiffResult =
         // printfn "path: %A" (newPath, oldPath)
-        let newFile = newPath |> toJsonPath history |> Option.tryReadAllText 
-        let oldFile = oldPath |> toJsonPath history |> Option.tryReadAllText
+        let newFile = newPath_.Value |> toJsonPath history_.Value |> Option.tryReadAllText 
+        let oldFile = oldPath_.Value |> toJsonPath history_.Value |> Option.tryReadAllText
         // printfn "file: %A" (newFile, newFile)
         let textToMap (text: string option) =
-            text
-            |> Option.map
-                (fun (x) ->
-                    JsonSerializer.Deserialize<Info list>(x)
+            maybe {
+                let! data =
+                    text 
+                    |> Option.map (fun x ->
+                        JsonSerializer.Deserialize<Info list>(x))
+                let data =
+                    data
                     |> List.map (fun x -> x.FullName, x)
-                    |> Map.ofList)
+                    |> Map.ofList
+                return data
+            }
         let newData =
             newFile
             |> textToMap
@@ -213,54 +236,65 @@ module History =
             // |> Option.map2 Map.difference newData
         createFile, modifyFile, deleteFile
 
+    /// <summary>測試函數</summary>
+    /// <param name="currentPath">項目的路徑</param>
+    /// <returns>包括一個異常，可再次抛出</returns>
     let test (currentPath: string) =
         (fun () ->
-        // let currentPath = Directory.GetCurrentDirectory()
+            let deleteDirectory (path: PathType.t) =
+                let p = path |> PathType.value
+                if Directory.Exists(p) then
+                    Directory.Delete(p, true)
+
             printfn "%A" currentPath
-            let test1 = Path.Join(currentPath, "test/test1")
-            let test2 = Path.Join(currentPath, "test/test2")
-            if Directory.Exists(test1) then
-                Directory.Delete(test1, true)
-            if Directory.Exists(test2) then
-                Directory.Delete(test2, true)
-            FileUtility.copyAll (Path.Join(currentPath, "test/test")) test1 (fun _ _ -> true)
-            FileUtility.copyAll (Path.Join(currentPath, "test/test")) test2 (fun _ _ -> true)
+            let test1 = Path.Join(currentPath, "test/test1") |> PathType.create
+            let test2 = Path.Join(currentPath, "test/test2") |> PathType.create
+            deleteDirectory test1
+            deleteDirectory test2
+
+            let testPath = Path.Join(currentPath, "test/test")
+
+            FileUtility.copyAll testPath test1.Value (fun _ _ -> true) |> ignore
+            FileUtility.copyAll testPath test2.Value (fun _ _ -> true) |> ignore
 
             // 兩個目錄要相等
             if compare test1 test2 |> not then
                 failwith "compare"
 
-            // printfn "================1================"
+        // printfn "================1================"
 
-            let history = init test1
+            let history = init test1 |> PathType.create
+
+            let the1 = "1" |> PathType.create
 
             // 添加當前記錄
-            add "1" test1 history
+            add the1 test1 history
 
             // 修改test1
             // 添加目录
-            Directory.CreateDirectory(Path.Join(test1, "4")) |> ignore
+            Directory.CreateDirectory(Path.Join(test1.Value, "4")) |> ignore
 
             // 添加文件
-            File.WriteAllText(Path.Join(test1, "2.txt"), "2")
-            File.WriteAllText(Path.Join(test1, "4/4.txt"), "4")
+            File.WriteAllText(Path.Join(test1.Value, "2.txt"), "2")
+            File.WriteAllText(Path.Join(test1.Value, "4/4.txt"), "4")
             // printfn "================2================"
 
             // 修改文件
-            File.WriteAllText(Path.Join(test1, "1.txt"), "1")
+            File.WriteAllText(Path.Join(test1.Value, "1.txt"), "1")
 
             // 刪除文件
-            File.Delete(Path.Join(test1, "3/4.txt"))
+            File.Delete(Path.Join(test1.Value, "3/4.txt"))
+
+            let the2 = "2" |> PathType.create
 
             // 保存修改後的狀態
-            add "2" test1 history
+            add the2 test1 history
 
-            let diffResult = diff history "2" "1"
+            let diffResult = diff history the2 the1
 
-            let diffPath = Path.Join(currentPath, "test/diff")
-            if Directory.Exists(diffPath) then
-                Directory.Delete(diffPath, true)
-            Directory.CreateDirectory(diffPath) |> ignore
+            let diffPath = Path.Join(currentPath, "test/diff") |> PathType.create
+            diffPath |> deleteDirectory 
+            Directory.CreateDirectory(diffPath.Value) |> ignore
 
             printfn "================1================"
 

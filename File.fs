@@ -2,6 +2,16 @@ namespace Extend
 open System.IO
 
 module FileUtility = 
+    type MaybeBuilder() =
+        member this.Bind(x, f) =
+            match x with
+            | None -> None
+            | Some a -> f a
+    
+        member this.Return(x) =
+            Some x
+    let maybe = new MaybeBuilder()
+
     let createDirectoryFor (path: string) =
         Option.ofTry (fun () ->
             let dir = FileInfo(path).Directory
@@ -13,20 +23,39 @@ module FileUtility =
         let entries =
             let s = Path.TrimEndingDirectorySeparator(src)
             let d = Path.TrimEndingDirectorySeparator(dest)
-            Directory.GetFileSystemEntries(src, "*", SearchOption.AllDirectories)
-            |> Array.map (fun x ->
-                let relaPath = Path.GetRelativePath(s, x)
-                let newPath = Path.Join(d, relaPath)
-                x, newPath)
-        for s, d in entries do
-            if pred s d then
-                if Directory.Exists(s) then
-                    if Directory.Exists(d) |> not then
-                        Directory.CreateDirectory(d) |> ignore
-                else
-                    createDirectoryFor d
-                    |> Option.map (fun _ -> File.Copy(s, d, true))
-                    |> ignore
+            maybe {
+                let r =
+                    (fun () -> Directory.GetFileSystemEntries(src, "*", SearchOption.AllDirectories))
+                    |> Option.ofTry
+                let! result = Option.map (Array.map (fun x ->
+                    let relaPath = Path.GetRelativePath(s, x)
+                    let newPath = Path.Join(d, relaPath)
+                    x, newPath)) r
+                result |> Array.iter (fun (s, d) ->
+                    if pred s d then
+                        if Directory.Exists(s) then
+                            if Directory.Exists(d) |> not then
+                                Directory.CreateDirectory(d) |> ignore
+                        else
+                            createDirectoryFor d
+                            |> Option.map (fun _ -> File.Copy(s, d, true))
+                            |> ignore
+                            )
+                return result
+            }
+        // entries
+            
+        entries
+        // |> Option.map (Array.iter (fun (s, d) ->
+        //     if pred s d then
+        //         if Directory.Exists(s) then
+        //             if Directory.Exists(d) |> not then
+        //                 Directory.CreateDirectory(d) |> ignore
+        //         else
+        //             createDirectoryFor d
+        //             |> Option.map (fun _ -> File.Copy(s, d, true))
+        //             |> ignore
+        //             )) |> ignore
 
 module FileUtils =
     let getDirectories (info: DirectoryInfo) =

@@ -77,9 +77,9 @@ let merge' =
     |> Option.map (List.item 0)
 
 if merge'.IsSome then
-    let merge = merge'.Value
+    let merge = merge'.Value |> History.PathType.create
     if output'.IsSome then
-        let output = output'.Value
+        let output = output'.Value |> History.PathType.create
         History.merge merge output
         exit 0
 
@@ -89,8 +89,8 @@ let compare' =
 
 if compare'.IsSome then
     let compare = compare'.Value
-    let a = compare[0]
-    let b = compare[1]
+    let a = compare[0] |> History.PathType.create
+    let b = compare[1] |> History.PathType.create
     let result = (fun () -> History.compare a b) |> Option.ofTry
     match result with
     | Some e -> printfn "對比結果：%A" e
@@ -108,11 +108,11 @@ printfn "path: %A" path'
 if path'.IsNone then
     exit 1
 
-let path = path'.Value
+let path = path'.Value |> History.PathType.create
 
-let history = History.init path
+let history = History.init path |> History.PathType.create
 
-History.list history
+History.list history.Value
 
 let add' =
     argTable
@@ -122,7 +122,10 @@ let add' =
 printfn "add" 
 
 if add'.IsSome then
-    History.add add'.Value path history
+    History.add
+        (add'.Value |> History.PathType.create)
+        path
+        history
     exit 0
 
 let diff' =
@@ -132,13 +135,13 @@ let diff' =
 
 if diff'.IsSome then
     let diff = diff'.Value
-    let n = diff[0] // 新
-    let o = diff[1] // 舊
+    let n = diff[0] |> History.PathType.create // 新
+    let o = diff[1] |> History.PathType.create // 舊
     let result = History.diff history n o
     // printfn "%A" result
     if output'.IsSome then
-        let output = output'.Value
-        if Directory.Exists(output) |> not then
+        let output = output'.Value |> History.PathType.create
+        if Directory.Exists(output.Value) |> not then
             exit 1
         printfn "copy: %A" (History.copy result path output)
     else
