@@ -48,9 +48,6 @@ module History =
         h
 
     let add (name_: PathType.t) (path_: PathType.t) (history_: PathType.t) =
-        // let name = name_ |> PathType.value
-        // let path = path_ |> PathType.value
-        // let history = history_ |> PathType.value
         Directory.CreateDirectory(Path.Join(history_.Value, name_.Value)) |> ignore
 
         let toFileTime (x: DateTime) = x.ToLocalTime().ToFileTime()
@@ -112,20 +109,20 @@ module History =
                     if Directory.Exists(path) |> not then
                         Directory.CreateDirectory(path) |> ignore)
 
-            printfn "c: %A" c
+            //printfn "c: %A" c
             let cd, cf = c |> partition
-            printfn "cd: %A" cd
-            printfn "================11================"
-            printfn "cf: %A" cf
+            //printfn "cd: %A" cd
+            //printfn "================11================"
+            //printfn "cf: %A" cf
             cf |> copyFile // 新增的文件複製
-            printfn "================12================"
+            //printfn "================12================"
             cd |> copyDir // 新增的目錄複製
 
 
             let _, mf = m |> partition
             mf |> copyFile // 修改的文件複製
 
-            printfn "================13================"
+            //printfn "================13================"
 
             // 將其他信息寫入JSON
             // cd 創建的文件夾

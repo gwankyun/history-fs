@@ -6,7 +6,9 @@
     <RootNamespace>fs_history</RootNamespace>
   </PropertyGroup>
 
+
   <ItemGroup>
+    <Compile Include="Result.fs" />
     <Compile Include="Option.fs" />
     <Compile Include="File.fs" />
     <Compile Include="Map.fs" />

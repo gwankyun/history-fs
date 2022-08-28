@@ -41,15 +41,6 @@ printfn "%A" argTable
 let currentPath = Directory.GetCurrentDirectory()
 printfn "%A" (Directory.GetCurrentDirectory())
 
-let result =
-    History.test (Directory.GetCurrentDirectory())
-
-match result with
-| Error e -> raise e |> ignore
-| _ -> ()
-
-exit 0
-
 // 查找參數
 // key 參數
 // num 數量
@@ -61,6 +52,18 @@ let tryGet (key: string) (num: int) (m: Map<string, string list>) =
 
 // let test' =
 //     argsTab
+
+let test' =
+    argTable
+    |> tryGet "--test" 0
+
+if test'.IsSome then
+    let result =
+        History.test (Directory.GetCurrentDirectory())
+
+    match result with
+    | Error e -> raise e |> ignore
+    | _ -> ()
 
 let output' =
     argTable
