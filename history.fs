@@ -47,6 +47,17 @@ module History =
             Directory.CreateDirectory(h) |> ignore
         h
 
+    let rename (history: PathType.t) (o: string) (n: string) =
+        let o = Path.Join(history.Value, o)
+        let n = Path.Join(history.Value, n)
+        if Directory.Exists(o) then
+            (fun () ->
+                Directory.Move(o, n)
+                true)
+            |> Result.ofTry
+        else
+            Ok false
+
     let add (name_: PathType.t) (path_: PathType.t) (history_: PathType.t) =
         Directory.CreateDirectory(Path.Join(history_.Value, name_.Value)) |> ignore
 
@@ -282,10 +293,16 @@ module History =
             // 刪除文件
             File.Delete(Path.Join(test1.Value, "3/4.txt"))
 
-            let the2 = "2" |> PathType.create
+            let the2 = "22" |> PathType.create
 
             // 保存修改後的狀態
             add the2 test1 history
+
+            match rename history "22" "2" with
+            | Error e -> raise e
+            | Ok s -> printfn "%A" s
+
+            let the2 = "2" |> PathType.create
 
             let diffResult = diff history the2 the1
 

@@ -50,9 +50,6 @@ let tryGet (key: string) (num: int) (m: Map<string, string list>) =
     |> Option.filter (List.length >> ((<=) num))
     |> Option.map (List.take num)
 
-// let test' =
-//     argsTab
-
 let test' =
     argTable
     |> tryGet "--test" 0
@@ -116,6 +113,10 @@ let path = path'.Value |> History.PathType.create
 let history = History.init path |> History.PathType.create
 
 History.list history.Value
+
+let rename' =
+    argTable
+    |> tryGet "--rename" 2
 
 let add' =
     argTable

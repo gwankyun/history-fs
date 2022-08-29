@@ -2,8 +2,8 @@
 
 module Result =
     type Builder() =
-        member this.Bind(x, f) = Result.bind f x
-        member this.Return(x) = Ok x
+        member _.Bind(x, f) = Result.bind f x
+        member _.Return(x) = Ok x
 
     let workflow = new Builder()
 
