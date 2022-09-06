@@ -32,12 +32,18 @@ module Extend =
             Directory.Exists(path)
 
 module Option =
-    let tryReadAllText (path: string) =
-        (Extend.Result.tryReadAllText path) |> Extend.Result.toOption
+    //let tryReadAllText (path: string) =
+    //    (Extend.Result.tryReadAllText path) |> Extend.Result.toOption
 
     let ofTry (f: unit -> 'a) : 'a option =
         try
             Some (f())
+        with
+            | _ -> None
+
+    let ofTryApply (f: 'a -> 'b) (x: 'a) : 'b option =
+        try
+            Some (f(x))
         with
             | _ -> None
     

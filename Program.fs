@@ -80,7 +80,7 @@ if merge'.IsSome then
     let merge = merge'.Value |> History.PathType.create
     if output'.IsSome then
         let output = output'.Value |> History.PathType.create
-        History.merge merge output
+        History.merge merge output |> ignore
         exit 0
 
 let compare' =
@@ -142,12 +142,11 @@ if diff'.IsSome then
     let n = diff[0] |> History.PathType.create // 新
     let o = diff[1] |> History.PathType.create // 舊
     let result = History.diff history n o
-    // printfn "%A" result
     if output'.IsSome then
         let output = output'.Value |> History.PathType.create
         if Directory.Exists(output.Value) |> not then
             exit 1
-        printfn "copy: %A" (History.copy result path output)
+        printfn "copy: %A" (History.copy result.Value path output)
     else
         printfn "no output"
     exit 0

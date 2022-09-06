@@ -39,9 +39,9 @@ module FileUtility =
                 x, newPath)
             |> Array.iter (fun (s, d) ->
                 if pred s d then
-                    if Directory.Exists(s) then
+                    if Directory.Exists(s) then // 文件夾
                         createDirectory d |> ignore
-                    else
+                    else // 文件
                         copy s d)
         ) |> Result.ofTry
 
