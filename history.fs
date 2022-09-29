@@ -109,7 +109,8 @@ module History =
             let oldPath = Path.Join(source_.Value, k)
             let newPath = Path.Join(dist_.Value, k)
             FileUtility.createDirectoryFor newPath |> ignore
-            File.Copy(oldPath, newPath, true))
+            if File.Exists(oldPath) then
+                File.Copy(oldPath, newPath, true))
         let copyDir (d: Diff) =
             d 
             |> Map.iter (fun k _ ->
