@@ -50,17 +50,28 @@ let tryGet (key: string) (num: int) (m: Map<string, string list>) =
     |> Option.filter (List.length >> ((<=) num))
     |> Option.map (List.take num)
 
-let test' =
+let help' =
     argTable
-    |> tryGet "--test" 0
+    |> tryGet "help" 0
 
-if test'.IsSome then
+printfn "args: %A" args
+
+match args[1] with
+| "help" ->
+    printfn "test"
+    printfn "--add"
+    printfn "--diff"
+    printfn "--merge"
+    exit 0
+| "test" ->
     let result =
         History.test (Directory.GetCurrentDirectory())
 
     match result with
     | Error e -> raise e |> ignore
     | _ -> ()
+    exit 0
+| _ -> ()
 
 let output' =
     argTable
@@ -112,11 +123,18 @@ let path = path'.Value |> History.PathType.create
 
 let history = History.init path |> History.PathType.create
 
-History.list history.Value
+History.list history
 
 let rename' =
     argTable
     |> tryGet "--rename" 2
+
+if rename'.IsSome then
+    let rename = rename'.Value
+    let n = rename[0]// |> History.PathType.create // 新
+    let o = rename[1]// |> History.PathType.create // 舊
+    History.rename history o n |> ignore
+    exit 0
 
 let add' =
     argTable

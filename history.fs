@@ -89,10 +89,11 @@ module History =
             File.WriteAllText(json, data)
         )
 
-    let list (history: string) =
-        let lst = Directory.GetDirectories(history)
+    let list (history: PathType.T) =
+        let lst = Directory.GetDirectories(history.Value)
         for i in lst do
-            printfn "%A" i
+            let p = i.Substring(history.Value.Length + 1)
+            printfn "%A" p
 
     let toJsonPath (history: string) (ver: string) =
         Path.Join(history, ver, "data.json")
@@ -320,8 +321,13 @@ module History =
 
             let the2 = "22" |> PathType.create
 
+            printfn "===test add begin"
+
             // 保存修改後的狀態
             add the2 test1 history
+            list history
+
+            printfn "===test add end"
 
             match rename history "22" "2" with
             | Error e -> raise e
@@ -344,6 +350,12 @@ module History =
                 failwith "copy"
 
             printfn "================2================"
+
+            printfn "===test list begin"
+
+            list history
+
+            printfn "===test list end"
 
             merge diffPath test2 |> ignore
 
