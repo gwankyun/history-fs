@@ -61,7 +61,7 @@ match args[1] with
     printfn "test"
     printfn "--add"
     printfn "--diff"
-    printfn "--merge"
+    printfn "merge patch target"
     exit 0
 | "test" ->
     let result =
@@ -70,6 +70,25 @@ match args[1] with
     match result with
     | Error e -> raise e |> ignore
     | _ -> ()
+    exit 0
+| "merge" ->
+    printfn "%i" args.Length
+    if args.Length < 4 then
+        exit 1
+    let patch = args[2] |> History.PathType.create
+    let target = args[3] |> History.PathType.create
+    match History.merge patch target with
+    | Ok _ -> exit 0
+    | Error e ->
+        printfn "%s" e.Message
+        exit 1
+| "add" ->
+    if args.Length < 4 then
+        exit 1
+    let path = args[2] |> History.PathType.create
+    let version = args[3] |> History.PathType.create
+    let history = History.init path |> History.PathType.create
+    History.add version path history
     exit 0
 | _ -> ()
 
