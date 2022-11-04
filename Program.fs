@@ -59,9 +59,10 @@ printfn "args: %A" args
 match args[1] with
 | "help" ->
     printfn "test"
-    printfn "--add"
-    printfn "--diff"
+    printfn "add path version"
+    printfn "diff path new old target"
     printfn "merge patch target"
+    printfn "list path"
     exit 0
 | "test" ->
     let result =
@@ -71,9 +72,17 @@ match args[1] with
     | Error e -> raise e |> ignore
     | _ -> ()
     exit 0
+| "list" ->
+    if args.Length < 3 then
+        // printfn "lsi patch target"
+        exit 1
+    let path = args[2] |> History.PathType.create
+    let history = History.init path |> History.PathType.create
+    History.list history
 | "merge" ->
     printfn "%i" args.Length
     if args.Length < 4 then
+        printfn "merge patch target"
         exit 1
     let patch = args[2] |> History.PathType.create
     let target = args[3] |> History.PathType.create
@@ -84,11 +93,29 @@ match args[1] with
         exit 1
 | "add" ->
     if args.Length < 4 then
+        printfn "add path version"
         exit 1
     let path = args[2] |> History.PathType.create
     let version = args[3] |> History.PathType.create
     let history = History.init path |> History.PathType.create
     History.add version path history
+    exit 0
+| "diff" ->
+    if args.Length < 6 then
+        printfn "diff path new old target"
+        exit 1
+    let path = args[2] |> History.PathType.create
+    let n = args[3] |> History.PathType.create // 新
+    let o = args[4] |> History.PathType.create // 舊
+    let output = args[5] |> History.PathType.create
+    let history = History.init path |> History.PathType.create
+    let result = History.diff history n o
+    if Directory.Exists(output.Value) |> not then
+        exit 1
+        printfn "copy: %A" (History.copy result.Value path output)
+    else
+        printfn "no output"
+        exit 0
     exit 0
 | _ -> ()
 

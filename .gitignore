@@ -350,6 +350,4 @@ MigrationBackup/
 .ionide/
 
 # 臨時的測試數據
-test/diff/
-test/test1/
-test/test2/
+test/
