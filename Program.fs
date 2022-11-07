@@ -108,14 +108,15 @@ match args[1] with
     let n = args[3] |> History.PathType.create // 新
     let o = args[4] |> History.PathType.create // 舊
     let output = args[5] |> History.PathType.create
+    printfn "output: %s" output.Value
     let history = History.init path |> History.PathType.create
     let result = History.diff history n o
-    if Directory.Exists(output.Value) |> not then
-        exit 1
+    if Directory.Exists(output.Value) then
         printfn "copy: %A" (History.copy result.Value path output)
+        exit 0
     else
         printfn "no output"
-        exit 0
+        exit 1
     exit 0
 | _ -> ()
 
