@@ -32,6 +32,10 @@ module History =
         IsDir: bool
     }
 
+    type Config = {
+        Debug: bool
+    }
+
     // [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module PathType =
         type T =
@@ -60,7 +64,7 @@ module History =
         else
             Ok false
 
-    let add (name_: PathType.T) (path_: PathType.T) (history_: PathType.T) =
+    let add (config: Config) (name_: PathType.T) (path_: PathType.T) (history_: PathType.T) =
         Directory.CreateDirectory(Path.Join(history_.Value, name_.Value)) |> ignore
 
         let toFileTime (x: DateTime) = x.ToLocalTime().ToFileTime()
@@ -101,9 +105,10 @@ module History =
     type Diff = Map<string, Info>
     type DiffResult = Diff * Diff * Diff
 
-    let copy (result: DiffResult) (source_: PathType.T) (dist_: PathType.T) =
+    let copy (config: Config) (result: DiffResult) (source_: PathType.T) (dist_: PathType.T) =
         let c, m, d = result
-        printfn "c: %A" c
+        if config.Debug then
+            printfn "c: %A" c
         let partition (d: Diff) = d |> Map.partition (fun _ v -> v.IsDir)
         let copyFile (f: Diff) =
             f |> Map.iter (fun k _ ->
@@ -148,7 +153,7 @@ module History =
                     File.WriteAllText(path, x)))
         result.IsSome
 
-    let merge (src_: PathType.T) (dest_: PathType.T) =
+    let merge (config: Config) (src_: PathType.T) (dest_: PathType.T) =
         // 複製src所有非.history目錄下的文件到dest
         let sc = Path.TrimEndingDirectorySeparator(src_.Value)
         let ds = Path.TrimEndingDirectorySeparator(dest_.Value)
@@ -176,7 +181,7 @@ module History =
 
     let result = new Result.Builder()
 
-    let compare (path1_: PathType.T) (path2_: PathType.T) =
+    let compare (config: Config) (path1_: PathType.T) (path2_: PathType.T) =
         let p1 = Path.TrimEndingDirectorySeparator(path1_.Value)
         let p2 = Path.TrimEndingDirectorySeparator(path2_.Value)
         match Directory.Exists(p1), Directory.Exists(p2) with
@@ -195,7 +200,12 @@ module History =
                 let! e1 = getRelativePath p1
                 let! e2 = getRelativePath p2
                 let diff a b = a |> Array.filter (fun x -> b |> Array.tryFind (fun y -> x = y) |> Option.isNone)
-                printfn "diff: %A\n%A" (diff e1 e2) (diff e2 e1)
+                let _ =
+                    match config.Debug with
+                    | true ->
+                        printfn "diff: %A\n%A" (diff e1 e2) (diff e2 e1)
+                        true
+                    | false -> false
                 return Array.compareWith (fun (a, aw) (b, bw) ->
                     let pa = Path.Join(p1, a)
                     let pb = Path.Join(p1, b)
@@ -211,7 +221,7 @@ module History =
             }
         | _ -> Ok false
 
-    let diff (history_: PathType.T) (newPath_: PathType.T) (oldPath_: PathType.T) =
+    let diff (config: Config) (history_: PathType.T) (newPath_: PathType.T) (oldPath_: PathType.T) =
         let readFile (path: PathType.T) =
             path.Value |> toJsonPath history_.Value
             |> Option.ofTryApply (fun x -> File.ReadAllText(x))
@@ -246,7 +256,12 @@ module History =
     /// <summary>測試函數</summary>
     /// <param name="currentPath">項目的路徑</param>
     /// <returns>包括一個異常，可再次抛出</returns>
-    let test (currentPath: string) =
+    let test (currentPath: string) (config: Config) =
+        let compare = compare config
+        let copy = copy config
+        let diff = diff config
+        let merge = merge config
+        let add = add config
         let result = new Result.Builder()
         (fun () ->
             let deleteDirectory d =

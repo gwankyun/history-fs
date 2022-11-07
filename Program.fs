@@ -66,7 +66,8 @@ match args[1] with
     exit 0
 | "test" ->
     let result =
-        History.test (Directory.GetCurrentDirectory())
+        let config: History.Config = { Debug = false }
+        History.test (Directory.GetCurrentDirectory()) config
 
     match result with
     | Error e -> raise e |> ignore
@@ -86,7 +87,8 @@ match args[1] with
         exit 1
     let patch = args[2] |> History.PathType.create
     let target = args[3] |> History.PathType.create
-    match History.merge patch target with
+    let config: History.Config = { Debug = false }
+    match History.merge config patch target with
     | Ok _ -> exit 0
     | Error e ->
         printfn "%s" e.Message
@@ -98,7 +100,8 @@ match args[1] with
     let path = args[2] |> History.PathType.create
     let version = args[3] |> History.PathType.create
     let history = History.init path |> History.PathType.create
-    History.add version path history
+    let config: History.Config = { Debug = false }
+    History.add config version path history
     exit 0
 | "diff" ->
     if args.Length < 6 then
@@ -110,9 +113,10 @@ match args[1] with
     let output = args[5] |> History.PathType.create
     printfn "output: %s" output.Value
     let history = History.init path |> History.PathType.create
-    let result = History.diff history n o
+    let config: History.Config = { Debug = false }
+    let result = History.diff config history n o
     if Directory.Exists(output.Value) then
-        printfn "copy: %A" (History.copy result.Value path output)
+        printfn "copy: %A" (History.copy config result.Value path output)
         exit 0
     else
         printfn "no output"
@@ -136,9 +140,10 @@ let merge' =
 
 if merge'.IsSome then
     let merge = merge'.Value |> History.PathType.create
+    let config: History.Config = { Debug = false }
     if output'.IsSome then
         let output = output'.Value |> History.PathType.create
-        History.merge merge output |> ignore
+        History.merge config merge output |> ignore
         exit 0
 
 let compare' =
@@ -149,7 +154,8 @@ if compare'.IsSome then
     let compare = compare'.Value
     let a = compare[0] |> History.PathType.create
     let b = compare[1] |> History.PathType.create
-    let result = (fun () -> History.compare a b) |> Option.ofTry
+    let config: History.Config = { Debug = false }
+    let result = (fun () -> History.compare config a b) |> Option.ofTry
     match result with
     | Some e -> printfn "對比結果：%A" e
     | None -> printfn "對比失敗"
@@ -191,7 +197,9 @@ let add' =
 printfn "add" 
 
 if add'.IsSome then
+    let config: History.Config = { Debug = false }
     History.add
+        config
         (add'.Value |> History.PathType.create)
         path
         history
@@ -206,12 +214,13 @@ if diff'.IsSome then
     let diff = diff'.Value
     let n = diff[0] |> History.PathType.create // 新
     let o = diff[1] |> History.PathType.create // 舊
-    let result = History.diff history n o
+    let config: History.Config = { Debug = false }
+    let result = History.diff config history n o
     if output'.IsSome then
         let output = output'.Value |> History.PathType.create
         if Directory.Exists(output.Value) |> not then
             exit 1
-        printfn "copy: %A" (History.copy result.Value path output)
+        printfn "copy: %A" (History.copy config result.Value path output)
     else
         printfn "no output"
     exit 0
