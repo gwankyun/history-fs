@@ -55,39 +55,47 @@ let help' =
     |> tryGet "help" 0
 
 printfn "args: %A" args
+printfn "args.Length: %i" args.Length
 
 match args[1] with
 | "help" ->
-    printfn "test"
+    printfn "test [all]"
     printfn "add path version"
     printfn "diff path new old target"
     printfn "merge patch target"
     printfn "list path"
     exit 0
 | "test" ->
-    let result =
-        let config: History.Config = { Debug = false }
-        History.test (Directory.GetCurrentDirectory()) config
+    let mutable target = "all"
+    if args.Length >= 3 then
+        target <- args[2]
+    printfn "target: %s" target
+    // let result =
+    let current = Directory.GetCurrentDirectory()
+    let config: History.Config = { Debug = true }
+    let result = History.test config current target
 
     match result with
-    | Error e -> raise e |> ignore
-    | _ -> ()
+    | true -> printfn "測試成功"
+    | false -> printfn "測試失敗"
     exit 0
 | "list" ->
     if args.Length < 3 then
         // printfn "lsi patch target"
         exit 1
     let path = args[2] |> History.PathType.create
-    let history = History.init path |> History.PathType.create
+    let history = History.init path// |> History.PathType.create
     History.list history
 | "merge" ->
     printfn "%i" args.Length
+    printfn "merge: %A" args
+    // exit 0
     if args.Length < 4 then
         printfn "merge patch target"
         exit 1
     let patch = args[2] |> History.PathType.create
     let target = args[3] |> History.PathType.create
-    let config: History.Config = { Debug = false }
+    let config: History.Config = { Debug = true }
     match History.merge config patch target with
     | Ok _ -> exit 0
     | Error e ->
@@ -98,8 +106,8 @@ match args[1] with
         printfn "add path version"
         exit 1
     let path = args[2] |> History.PathType.create
-    let version = args[3] |> History.PathType.create
-    let history = History.init path |> History.PathType.create
+    let version = args[3] // |> History.PathType.create
+    let history = History.init path// |> History.PathType.create
     let config: History.Config = { Debug = false }
     History.add config version path history
     exit 0
@@ -112,7 +120,7 @@ match args[1] with
     let o = args[4] |> History.PathType.create // 舊
     let output = args[5] |> History.PathType.create
     printfn "output: %s" output.Value
-    let history = History.init path |> History.PathType.create
+    let history = History.init path// |> History.PathType.create
     let config: History.Config = { Debug = false }
     let result = History.diff config history n o
     if Directory.Exists(output.Value) then
@@ -174,7 +182,7 @@ if path'.IsNone then
 
 let path = path'.Value |> History.PathType.create
 
-let history = History.init path |> History.PathType.create
+let history = History.init path// |> History.PathType.create
 
 History.list history
 
@@ -200,7 +208,8 @@ if add'.IsSome then
     let config: History.Config = { Debug = false }
     History.add
         config
-        (add'.Value |> History.PathType.create)
+        (add'.Value)
+        // |> History.PathType.create
         path
         history
     exit 0
