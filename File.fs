@@ -39,9 +39,9 @@ module FileUtility =
                 x, newPath)
             |> Array.iter (fun (s, d) ->
                 if pred s d then
-                    if Directory.Exists(s) then // ÎÄ¼þŠA
+                    if Directory.Exists(s) then // æ–‡ä»¶å¤¾
                         createDirectory d |> ignore
-                    else // ÎÄ¼þ
+                    else // æ–‡ä»¶
                         copy s d)
         ) |> Result.ofTry
 
@@ -57,6 +57,9 @@ module FileUtils =
             info.GetFiles()
         with
             | _ -> Array.empty
+
+    let getDirectoriesAndFiles (info: DirectoryInfo) =
+        (getDirectories info), (getFiles info)
 
     let getAllFiles (path: string) =
         let rec f (s: DirectoryInfo list) (r: FileInfo list) =
@@ -80,3 +83,17 @@ module FileUtils =
                 f s r
             | [] -> r
         f [new DirectoryInfo(path)] []
+
+    let getAllDirectoriesAndFiles (path: string) =
+        let rec r (s: DirectoryInfo list) (d: DirectoryInfo list) (f: FileInfo list) =
+            match s with
+            | h::t ->
+                let dirArray, fileArray = getDirectoriesAndFiles h
+                let dirs = dirArray |> List.ofArray
+                let files = fileArray |> List.ofArray
+                let s = t |> List.append dirs
+                let d = d |> List.append dirs
+                let f = f |> List.append files
+                r s d f
+            | [] -> d, f
+        r [new DirectoryInfo(path)] List.empty List.empty

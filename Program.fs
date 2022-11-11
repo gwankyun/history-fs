@@ -57,6 +57,14 @@ let help' =
 printfn "args: %A" args
 printfn "args.Length: %i" args.Length
 
+type FileState = {
+        Dir: Map<string, int64>
+        File: Map<string, int64>
+    }
+
+// type Info =
+//     | Dir
+
 match args[1] with
 | "help" ->
     printfn "test [all]"
@@ -102,33 +110,90 @@ match args[1] with
         printfn "%s" e.Message
         exit 1
 | "add" ->
-    if args.Length < 4 then
-        printfn "add path version"
-        exit 1
+    // if args.Length < 4 then
+    //     printfn "add path version"
+    //     exit 1
     let path = args[2] |> History.PathType.create
     let version = args[3] // |> History.PathType.create
-    let history = History.init path// |> History.PathType.create
-    let config: History.Config = { Debug = false }
-    History.add config version path history
+    // let history = History.init path// |> History.PathType.create
+    // let config: History.Config = { Debug = false }
+    // History.add config version path history
+
+    let add (path: History.PathType.T) : FileState =
+        let toFileTime (x: DateTime) = x.ToLocalTime().ToFileTime()
+        let toInfo (x: FileSystemInfo) =
+            Path.GetRelativePath(path.Value, x.FullName), x.LastWriteTime |> toFileTime
+        let toMap = List.map toInfo >> Map.ofList
+        // let filter x = List.filter (fun (k, _) -> k.StartsWith(".history")) x
+
+        let d, f = FileUtils.getAllDirectoriesAndFiles path.Value
+        let d = d |> List.map toInfo |> List.filter (fun (k, _) -> k.StartsWith(".history") |> not) |> Map.ofList
+        let f = f |> List.map toInfo |> List.filter (fun (k, _) -> k.StartsWith(".history") |> not) |> Map.ofList
+        { Dir = d; File = f }
+
+    let data = Json.JsonSerializer.Serialize((add path))
+
+    let historyPath = Path.Join(path.Value, ".history")
+    if Directory.Exists(historyPath) |> not then
+        Directory.CreateDirectory(historyPath) |> ignore
+
+    let jsonPath = Path.Join(historyPath, version + ".json")
+    File.WriteAllText(jsonPath, data)
+
+    printfn "%A" (add path)
+    printfn "d: %A" data
+
     exit 0
 | "diff" ->
     if args.Length < 6 then
         printfn "diff path new old target"
-        exit 1
+        // exit 1
     let path = args[2] |> History.PathType.create
-    let n = args[3] |> History.PathType.create // 新
-    let o = args[4] |> History.PathType.create // 舊
-    let output = args[5] |> History.PathType.create
-    printfn "output: %s" output.Value
-    let history = History.init path// |> History.PathType.create
-    let config: History.Config = { Debug = false }
-    let result = History.diff config history n o
-    if Directory.Exists(output.Value) then
-        printfn "copy: %A" (History.copy config result.Value path output)
-        exit 0
-    else
-        printfn "no output"
-        exit 1
+    let n = args[3] // |> History.PathType.create // 新
+    let o = args[4] // |> History.PathType.create // 舊
+    // let output = args[5] |> History.PathType.create
+    // printfn "output: %s" output.Value
+    // let history = History.init path// |> History.PathType.create
+    // let config: History.Config = { Debug = false }
+    // let result = History.diff config history n o
+    // if Directory.Exists(output.Value) then
+    //     printfn "copy: %A" (History.copy config result.Value path output)
+    //     exit 0
+    // else
+    //     printfn "no output"
+    //     exit 1
+
+    let newPath = Path.Join(path.Value, ".history", n + ".json")
+    let oldPath = Path.Join(path.Value, ".history", o + ".json")
+    let newContent = File.ReadAllText(newPath)
+    let oldContent = File.ReadAllText(oldPath)
+
+    printfn "new: %A" (newContent)
+    printfn "old: %A" (oldContent)
+
+    let newData = Json.JsonSerializer.Deserialize<FileState>(newContent)
+    let oldData = Json.JsonSerializer.Deserialize<FileState>(oldContent)
+
+    // let diff (newData: Map<string, int64> * Map<string, int64>) (oldData: Map<string, int64> * Map<string, int64>) =
+    let diff (newData: FileState) (oldData: FileState) =
+        // let newDir, newFile = newData
+        let newDir = newData.Dir;
+        let newFile = newData.File;
+        // let oldDir, oldFile = oldData
+        let oldDir = oldData.Dir;
+        let oldFile = oldData.File;
+        // 目錄
+        let createDir = Map.difference newDir oldDir // 新增
+        let modifyDir = Map.intersectWith (fun _ _ _ -> true) newDir oldDir // 修改
+        let deleteDir = Map.difference oldDir newDir // 刪除
+        // 文件
+        let createFile = Map.difference newFile oldFile
+        let modifyFile = Map.intersectWith (fun _ _ _ -> true) newFile oldFile // 修改
+        let deleteFile = Map.difference oldFile newFile // 刪除
+        Map.add createDir modifyDir, Map.add deleteDir deleteFile
+
+    printfn "diff: %A" (diff newData oldData)
+
     exit 0
 | _ -> ()
 
