@@ -3,16 +3,12 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net7.0</TargetFramework>
-    <RootNamespace>fs_history</RootNamespace>
   </PropertyGroup>
 
-
   <ItemGroup>
-    <Compile Include="Result.fs" />
-    <Compile Include="Option.fs" />
-    <Compile Include="File.fs" />
-    <Compile Include="Map.fs" />
+    <Compile Include="common.fs" />
     <Compile Include="history.fs" />
+    <Compile Include="test.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

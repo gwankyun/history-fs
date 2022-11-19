@@ -1,314 +1,109 @@
-﻿open System
+﻿// For more information see https://aka.ms/fsharp-console-apps
+open System
 open System.IO
-open System.Text
-open Extend
-open History
+open System.Text.Json
+open Common
 
-module Int32 =
-    let tryParse (str: string) =
-        match System.Int32.TryParse str with
-        | true, v -> Some v
-        | false, _ -> None
-
-let parseArgs (arg: string []) =
-    let rec f (a: string list) m k =
-        match a with
-        | h::t ->
-            match h.StartsWith("--"), k with
-            | false, None -> f t m None
-            | false, Some x ->
-                let nm = m |> Map.change x (Option.map (fun n -> h::n))
-                f t nm (Some x)
-            | true, _ ->
-                let nm = m |> Map.add h []
-                f t nm (Some h)
-        | [] -> m |> Map.map (fun _ v -> v |> List.rev)
-    f (arg |> List.ofArray) Map.empty None
-
-let tryGetIndex (opt: string) (args: string[]) =
-    args
-    |> Array.tryFindIndex ((=) opt)
-    |> Option.map ((+) 1)
-    |> Option.filter ((>) args.Length)
-
-let args = Environment.GetCommandLineArgs();
+let args = Environment.GetCommandLineArgs()
 printfn "%A" args
-
-let argTable = args |> parseArgs
-
-printfn "%A" argTable
-
-let currentPath = Directory.GetCurrentDirectory()
-printfn "%A" (Directory.GetCurrentDirectory())
-
-// 查找參數
-// key 參數
-// num 數量
-let tryGet (key: string) (num: int) (m: Map<string, string list>) =
-    m
-    |> Map.tryFind key
-    |> Option.filter (List.length >> ((<=) num))
-    |> Option.map (List.take num)
-
-let help' =
-    argTable
-    |> tryGet "help" 0
-
-printfn "args: %A" args
-printfn "args.Length: %i" args.Length
-
-type FileState = {
-        Dir: Map<string, int64>
-        File: Map<string, int64>
-    }
-
-// type Info =
-//     | Dir
+printfn "%A" args.Length
 
 match args[1] with
 | "help" ->
-    printfn "test [all]"
-    printfn "add path version"
-    printfn "diff path new old target"
-    printfn "merge patch target"
-    printfn "list path"
+    printfn "help"
     exit 0
-| "test" ->
-    let mutable target = "all"
-    if args.Length >= 3 then
-        target <- args[2]
-    printfn "target: %s" target
-    // let result =
-    let current = Directory.GetCurrentDirectory()
-    let config: History.Config = { Debug = true }
-    let result = History.test config current target
-
-    match result with
-    | true -> printfn "測試成功"
-    | false -> printfn "測試失敗"
-    exit 0
-| "list" ->
-    if args.Length < 3 then
-        // printfn "lsi patch target"
-        exit 1
-    let path = args[2] |> History.PathType.create
-    let history = History.init path// |> History.PathType.create
-    History.list history
-| "merge" ->
-    printfn "%i" args.Length
-    printfn "merge: %A" args
-    // exit 0
-    if args.Length < 4 then
-        printfn "merge patch target"
-        exit 1
-    let patch = args[2] |> History.PathType.create
-    let target = args[3] |> History.PathType.create
-    let config: History.Config = { Debug = true }
-    match History.merge config patch target with
-    | Ok _ -> exit 0
-    | Error e ->
-        printfn "%s" e.Message
-        exit 1
 | "add" ->
-    // if args.Length < 4 then
-    //     printfn "add path version"
-    //     exit 1
-    let path = args[2] |> History.PathType.create
-    let version = args[3] // |> History.PathType.create
-    // let history = History.init path// |> History.PathType.create
-    // let config: History.Config = { Debug = false }
-    // History.add config version path history
+    if args.Length < 4 then
+        printfn "need 4+ args"
+        exit 1
 
-    let add (path: History.PathType.T) : FileState =
-        let toFileTime (x: DateTime) = x.ToLocalTime().ToFileTime()
-        let toInfo (x: FileSystemInfo) =
-            Path.GetRelativePath(path.Value, x.FullName), x.LastWriteTime |> toFileTime
-        let toMap = List.map toInfo >> Map.ofList
-        // let filter x = List.filter (fun (k, _) -> k.StartsWith(".history")) x
+    let path = args[2]
+    if Directory.Exists(path) |> not then
+        printfn "path not exists"
+        exit 1
 
-        let d, f = FileUtils.getAllDirectoriesAndFiles path.Value
-        let d = d |> List.map toInfo |> List.filter (fun (k, _) -> k.StartsWith(".history") |> not) |> Map.ofList
-        let f = f |> List.map toInfo |> List.filter (fun (k, _) -> k.StartsWith(".history") |> not) |> Map.ofList
-        { Dir = d; File = f }
+    let ver = args[3]
+    
+    printfn "path: %s" path
 
-    let data = Json.JsonSerializer.Serialize((add path))
+    let info = History.add path
 
-    let historyPath = Path.Join(path.Value, ".history")
-    if Directory.Exists(historyPath) |> not then
-        Directory.CreateDirectory(historyPath) |> ignore
-
-    let jsonPath = Path.Join(historyPath, version + ".json")
-    File.WriteAllText(jsonPath, data)
-
-    printfn "%A" (add path)
-    printfn "d: %A" data
+    printfn "info: %A" info
+    
+    // 保存文件
+    let jsonPath = Common.join3 path ".history" (ver + ".json")
+    Common.createDirectoryFor jsonPath
+    File.WriteAllText(jsonPath, JsonSerializer.Serialize(info))
 
     exit 0
 | "diff" ->
     if args.Length < 6 then
-        printfn "diff path new old target"
-        // exit 1
-    let path = args[2] |> History.PathType.create
-    let n = args[3] // |> History.PathType.create // 新
-    let o = args[4] // |> History.PathType.create // 舊
-    // let output = args[5] |> History.PathType.create
-    // printfn "output: %s" output.Value
-    // let history = History.init path// |> History.PathType.create
-    // let config: History.Config = { Debug = false }
-    // let result = History.diff config history n o
-    // if Directory.Exists(output.Value) then
-    //     printfn "copy: %A" (History.copy config result.Value path output)
-    //     exit 0
-    // else
-    //     printfn "no output"
-    //     exit 1
+        printfn "need 6+ args"
+        exit 1
+    
+    let path = args[2]
+    let target = args[3]
+    if Directory.Exists(path) |> not then
+        printfn "path not exists"
+        exit 1
 
-    let newPath = Path.Join(path.Value, ".history", n + ".json")
-    let oldPath = Path.Join(path.Value, ".history", o + ".json")
-    let newContent = File.ReadAllText(newPath)
-    let oldContent = File.ReadAllText(oldPath)
+    let verNew = args[4]
+    let verOld = args[5]
 
-    printfn "new: %A" (newContent)
-    printfn "old: %A" (oldContent)
+    if Directory.Exists(Path.Join(path, ".history")) |> not then
+        exit 1
 
-    let newData = Json.JsonSerializer.Deserialize<FileState>(newContent)
-    let oldData = Json.JsonSerializer.Deserialize<FileState>(oldContent)
+    let getInfo (path: string) (ver: string) : Info option =
+        let verPath = Path.Join(path, ".history", ver + ".json")
+        match File.Exists(verPath) with
+        | true ->
+            let content = File.ReadAllText(verPath)
+            Some (JsonSerializer.Deserialize<Info>(content))
+        | false ->
+            None
 
-    // let diff (newData: Map<string, int64> * Map<string, int64>) (oldData: Map<string, int64> * Map<string, int64>) =
-    let diff (newData: FileState) (oldData: FileState) =
-        // let newDir, newFile = newData
-        let newDir = newData.Dir;
-        let newFile = newData.File;
-        // let oldDir, oldFile = oldData
-        let oldDir = oldData.Dir;
-        let oldFile = oldData.File;
-        // 目錄
-        let createDir = Map.difference newDir oldDir // 新增
-        let modifyDir = Map.intersectWith (fun _ _ _ -> true) newDir oldDir // 修改
-        let deleteDir = Map.difference oldDir newDir // 刪除
-        // 文件
-        let createFile = Map.difference newFile oldFile
-        let modifyFile = Map.intersectWith (fun _ _ _ -> true) newFile oldFile // 修改
-        let deleteFile = Map.difference oldFile newFile // 刪除
-        Map.add createDir modifyDir, Map.add deleteDir deleteFile
+    let newInfo: Info option = getInfo path verNew
+    let oldInfo = getInfo path verOld
 
-    printfn "diff: %A" (diff newData oldData)
+    match newInfo, oldInfo with
+    | Some nI, Some oI ->
+        let df = History.diff nI oI
+        History.copy df path target
+        exit 0
+    | _ -> exit 1
+
+    exit 0
+| "merge" ->
+    let path = args[2]
+    let target = args[3]
+
+    History.merge path target
+
+    exit 0
+| "test" ->
+    if args.Length < 4 then
+        printfn "參數太少"
+        exit 1
+
+    let cmd = args[2]
+    let path = args[3]
+
+    match cmd with
+    | "add" ->
+        if Test.add path then
+            exit 0
+
+    | "diff" ->
+        Test.diff path
+        exit 0
+
+    | "merge" ->
+        Test.merge path
+        exit 0
+
+    | _ ->
+        printfn "未知命令"
+        exit 1
 
     exit 0
 | _ -> ()
-
-let output' =
-    argTable
-    |> tryGet "--output" 1
-    |> Option.map (List.item 0)
-
-if output'.IsSome then
-    let output = output'.Value
-    printfn "output: %A" output
-
-let merge' =
-    argTable
-    |> tryGet "--merge" 1
-    |> Option.map (List.item 0)
-
-if merge'.IsSome then
-    let merge = merge'.Value |> History.PathType.create
-    let config: History.Config = { Debug = false }
-    if output'.IsSome then
-        let output = output'.Value |> History.PathType.create
-        History.merge config merge output |> ignore
-        exit 0
-
-let compare' =
-    argTable
-    |> tryGet "--compare" 2
-
-if compare'.IsSome then
-    let compare = compare'.Value
-    let a = compare[0] |> History.PathType.create
-    let b = compare[1] |> History.PathType.create
-    let config: History.Config = { Debug = false }
-    let result = (fun () -> History.compare config a b) |> Option.ofTry
-    match result with
-    | Some e -> printfn "對比結果：%A" e
-    | None -> printfn "對比失敗"
-    exit 0
-
-let path' =
-    argTable
-    |> tryGet "--path" 1
-    |> Option.map (List.item 0)
-
-printfn "path: %A" path'
-
-// 必須要目錄
-if path'.IsNone then
-    exit 1
-
-let path = path'.Value |> History.PathType.create
-
-let history = History.init path// |> History.PathType.create
-
-History.list history
-
-let rename' =
-    argTable
-    |> tryGet "--rename" 2
-
-if rename'.IsSome then
-    let rename = rename'.Value
-    let n = rename[0]// |> History.PathType.create // 新
-    let o = rename[1]// |> History.PathType.create // 舊
-    History.rename history o n |> ignore
-    exit 0
-
-let add' =
-    argTable
-    |> tryGet "--add" 1
-    |> Option.map (List.item 0)
-
-printfn "add" 
-
-if add'.IsSome then
-    let config: History.Config = { Debug = false }
-    History.add
-        config
-        (add'.Value)
-        // |> History.PathType.create
-        path
-        history
-    exit 0
-
-let diff' =
-    argTable
-    |> tryGet "--diff" 2
-    // |> Option.map (List.item 0)
-
-if diff'.IsSome then
-    let diff = diff'.Value
-    let n = diff[0] |> History.PathType.create // 新
-    let o = diff[1] |> History.PathType.create // 舊
-    let config: History.Config = { Debug = false }
-    let result = History.diff config history n o
-    if output'.IsSome then
-        let output = output'.Value |> History.PathType.create
-        if Directory.Exists(output.Value) |> not then
-            exit 1
-        printfn "copy: %A" (History.copy config result.Value path output)
-    else
-        printfn "no output"
-    exit 0
-
-let toHex (str: string) =
-    Convert.ToHexString(Encoding.UTF8.GetBytes(str))
-
-let getCmd (cmd: string) : string =
-    let head = "3C55AAC3"
-    let len = cmd.Length.ToString("X8")
-    let checksum =
-        cmd.ToCharArray()
-        |> Array.map (fun x -> Convert.ToInt32(x))
-        |> Array.reduce (+)
-        |> (fun x -> x.ToString("X8"))
-    let xml = toHex cmd
-    head + len + checksum + "00000000" + xml
