@@ -60,16 +60,20 @@ match args[1] with
             let content = File.ReadAllText(verPath)
             Some (JsonSerializer.Deserialize<Info>(content))
         | false ->
+            printfn "no path"
             None
 
     let newInfo: Info option = getInfo path verNew
     let oldInfo = getInfo path verOld
 
+    printfn "yes"
     match newInfo, oldInfo with
     | Some nI, Some oI ->
         let df = History.diff nI oI
         History.copy df path target
+        printfn "yes"
         exit 0
+    | Some nI, _ -> printfn "no old"
     | _ -> exit 1
 
     exit 0

@@ -68,12 +68,15 @@ module History =
             let dest = Common.join3 target "data" k
             FileEntry.Dir dest |> Common.createDirectory)
         update.File |> Map.iter (fun k _ ->
-            let source = Common.join3 path "test" k
+            let source = Common.join path k
             let dest = Common.join3 target "data" k
             Common.createDirectoryFor dest
             printfn "source: %s" source
             printfn "dest: %s" dest
-            File.Copy(source, dest, true))
+            if source |> FileEntry.File |> Common.exists then
+                File.Copy(source, dest, true)
+            else
+                printfn "source not exists: %s" source)
         // 刪除的衹要Json就好
         let jsonContent = JsonSerializer.Serialize(df)
         File.WriteAllText(Common.join target "data.json", jsonContent)
