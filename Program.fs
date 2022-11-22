@@ -5,12 +5,16 @@ open System.Text.Json
 open Common
 
 let args = Environment.GetCommandLineArgs()
-printfn "%A" args
-printfn "%A" args.Length
+printfn "args: %A" args
+printfn "args.Length: %A" args.Length
+printfn "======================================================================"
 
 match args[1] with
 | "help" ->
-    printfn "help"
+    printfn "add path ver"
+    printfn "diff path patch new old"
+    printfn "merge path patch"
+    printfn "compare path json"
     exit 0
 | "add" ->
     if args.Length < 4 then
@@ -84,6 +88,15 @@ match args[1] with
     History.merge path target
 
     exit 0
+| "compare" ->
+    let path = args[2]
+    let target = args[3]
+    if Test.compare path target then
+        printfn "相等"
+        exit 0
+    else
+        printfn "不等"
+        exit 1
 | "test" ->
     if args.Length < 4 then
         printfn "參數太少"
@@ -96,18 +109,14 @@ match args[1] with
     | "add" ->
         if Test.add path then
             exit 0
-
     | "diff" ->
         Test.diff path
         exit 0
-
     | "merge" ->
         Test.merge path
         exit 0
-
     | _ ->
         printfn "未知命令"
         exit 1
-
     exit 0
 | _ -> ()

@@ -1,5 +1,6 @@
 namespace Common
 open System.IO
+open System.Text.Json
 
 module Test =
     let init (path: string) =
@@ -162,14 +163,24 @@ module Test =
         let diffPath = Common.join path "diff"
         if diffPath |> FileEntry.Dir |> Common.exists then
             diffPath |> FileEntry.Dir |> Common.delete
-        History.copy df path diffPath
+        History.copy df (Common.join path "test") diffPath
 
         // 合併差異到備份
         History.merge (Common.join path "test2") (Common.join path "diff")
 
         // 對比
-        if getFileList (Common.join path "test") <> getFileList (Common.join path "test2") then
-            printfn "測試失敗"
-            exit 1
+        let a = History.add (Common.join path "test")
+        let b = History.add (Common.join path "test2")
+        if History.compare a b |> not then
+            printfn "test: %A" a
+            printfn "test2: %A" b
+            printfn "[%s] 測試失敗" __LINE__
+            exit 1   
 
         printfn "測試通過"
+
+    let compare (current: string) (json: string) : bool =
+        let pathToInfo (p: string) =
+            let txt = File.ReadAllText(p)
+            JsonSerializer.Deserialize<Info>(txt)
+        History.compare (History.add current) (pathToInfo json)

@@ -73,8 +73,7 @@ module Common =
     let copyAll (source: string) (dest: string) =
         let items =
             getFileSystemEntries source
-            |> Array.map (fun x -> x |> FileEntry.create, getRelativePath source x//Path.GetRelativePath(source, x)
-            )
+            |> Array.map (fun x -> x |> FileEntry.create, getRelativePath source x)
         items
         |> Array.iter (fun (a, b) ->
             let path = join dest b
@@ -84,3 +83,9 @@ module Common =
             | FileEntry.File file ->
                 createDirectoryFor path
                 File.Copy(file, path, true))
+
+    let difference (f: 'k -> 'v -> 'v -> bool) (a: Map<'k, 'v>) (b: Map<'k, 'v>) =
+        a |> Map.filter (fun k v ->
+            match b |> Map.tryFind k with
+            | Some x -> f k v x
+            | None -> true)
