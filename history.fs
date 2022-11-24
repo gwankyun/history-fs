@@ -8,32 +8,34 @@ open Common
 /// <returns>信息</returns>
 let add (path: string) : Info =
     // 獲取當前
-    let lastWriteTime (info: FileEntry.T) =
+    let lastWriteTime (info: Entry.T) =
         let fileTime (p: FileSystemInfo) =
             p.LastWriteTime.ToLocalTime().ToFileTime()
         match info with
-        | FileEntry.Dir dir -> new DirectoryInfo(dir) |> fileTime
-        | FileEntry.File file -> new FileInfo(file) |> fileTime
+        | Entry.Dir dir -> new DirectoryInfo(dir) |> fileTime
+        | Entry.File file -> new FileInfo(file) |> fileTime
+        | Entry.Inexistence -> failwith "Inexistence"
 
-    let getRelativePath (path: string) (info: FileEntry.T) : FileEntry.T =
+    let getRelativePath (path: string) (info: Entry.T) : Entry.T =
         let relative = Path.GetRelativePath(path, info.Value)
         match info with
-        | FileEntry.Dir _ -> relative |> FileEntry.Dir
-        | FileEntry.File _ -> relative |> FileEntry.File
+        | Entry.Dir _ -> relative |> Entry.Dir
+        | Entry.File _ -> relative |> Entry.File
+        | Entry.Inexistence -> failwith "Inexistence"
 
-    let getInfo (path: string) (p: FileEntry.T) =
+    let getInfo (path: string) (p: Entry.T) =
         let relative = getRelativePath path p
         (relative, lastWriteTime p)
 
     let (dir, file) =
         getFileSystemEntries path
-        |> Array.map FileEntry.create
+        |> Array.map Entry.create
         |> Array.map (getInfo path)
-        |> Array.partition (fun (k, _) -> FileEntry.isDir k)
+        |> Array.partition (fun (k, _) -> Entry.isDir k)
         ||> (fun a b ->
             let f m =
                 m
-                |> Array.map (fun (k: FileEntry.T, v) -> k.Value, v)
+                |> Array.map (fun (k: Entry.T, v) -> k.Value, v)
                 |> Map.ofArray
             (a |> f, b |> f))
     { Dir = dir; File = file }
@@ -58,16 +60,15 @@ let copy (df: Diff) (path: string) (target: string) =
     let delete = df.Delete
     // 更新的要複製
     update.Dir |> Map.iter (fun k _ ->
-        // let k = k.Value
         let dest = join3 target "data" k
-        FileEntry.Dir dest |> createDirectory)
+        dest |> Entry.createDirectory |> ignore)
     update.File |> Map.iter (fun k _ ->
         let source = join path k
         let dest = join3 target "data" k
         createDirectoryFor dest
         printfn "[%s] source: %s" __LINE__ source
         printfn "[%s] dest: %s" __LINE__ dest
-        if source |> FileEntry.File |> exists then
+        if source |> Entry.File |> exists then
             File.Copy(source, dest, true)
         else
             printfn "[%s] source not exists: %s" __LINE__ source)
@@ -84,16 +85,16 @@ let merge (path: string) (d: string) =
     let content = File.ReadAllText(join d "data.json")
     let dif = JsonSerializer.Deserialize<Diff>(content)
     let joinPath = join path
-    let delete k = joinPath k |> FileEntry.create |> delete
+    let delete k = joinPath k |> Entry.create |> Entry.delete
     dif.Update.Dir |> Map.iter (fun k _ ->
-        joinPath k |> FileEntry.Dir |> createDirectory)
+        joinPath k |> Entry.createDirectory |> ignore)
     dif.Update.File |> Map.iter (fun k _ ->
         joinPath k |> createDirectoryFor
         let source = join3 d "data" k
         let dest = joinPath k
         printfn "[%s] source: %s" __LINE__ source
         printfn "[%s] dest: %s" __LINE__ dest
-        if source |> FileEntry.File |> exists |> not then
+        if source |> Entry.File |> exists |> not then
             failwith "not exists"
         File.Copy(source, dest, true))
     let deleteKey k _ = delete k

@@ -4,32 +4,36 @@ open System.Text.Json
 
 open Common
 let init (path: string) =
-    let dir = FileEntry.Dir (join path "test")
-    if dir |> exists then
-        delete dir
-    createDirectory dir
+    let dir = join path "test"
+    if Directory.Exists(dir) then
+        Directory.Delete(dir, true)
+
+    let dir = dir |> Entry.createDirectory
 
     // 創建文件
-    File.WriteAllText(join dir.Value "1.txt", "1")
+    dir |> Entry.iter (fun x ->
+        File.WriteAllText(join x "1.txt", "1"))
 
-    FileEntry.Dir (join dir.Value "2") |> createDirectory
-    File.WriteAllText(join3 dir.Value "2" "3.txt", "3")
+    join dir.Value "2"
+    |> Entry.createDirectory
+    |> Entry.iter (fun x ->
+        File.WriteAllText(join x "3.txt", "3"))
 
     // 文件夹
-    (join dir.Value "3") |> FileEntry.Dir |> createDirectory
+    join dir.Value "3" |> Entry.createDirectory |> ignore
     dir
 
-let update (dir: FileEntry.T) =
+let update (dir: Entry.T) =
     // 增
     File.WriteAllText(join dir.Value "4.txt", "4")
     // 刪
-    FileEntry.File (join3 dir.Value "2" "3.txt") |> delete
+    join3 dir.Value "2" "3.txt" |> Entry.create |> Entry.deleteWith ignore
     // 改
     File.WriteAllText(join dir.Value "1.txt", "11")
     // 增
-    (join3 dir.Value "2" "3") |> FileEntry.Dir |> createDirectory
+    join3 dir.Value "2" "3" |> Entry.createDirectory |> ignore
     // 刪
-    (join dir.Value "3") |> FileEntry.Dir |> delete
+    join dir.Value "3" |> Entry.create |> Entry.deleteWith ignore
 
 let test (m: Map<string, int64>) = m |> Map.keys |> List.ofSeq |> List.sort
 
@@ -113,7 +117,7 @@ let diff (path: string) =
 let merge (path: string) =
     let dir = init path
 
-    join path "test2" |> FileEntry.Dir |> delete
+    join path "test2" |> Entry.Dir |> delete
     copyAll dir.Value (join path "test2")
 
     let result = getFileList (join path "test2")
@@ -160,8 +164,8 @@ let merge (path: string) =
 
     // 保存差異到本地
     let diffPath = join path "diff"
-    if diffPath |> FileEntry.Dir |> exists then
-        diffPath |> FileEntry.Dir |> delete
+    if diffPath |> Entry.Dir |> exists then
+        diffPath |> Entry.Dir |> delete
     History.copy df (join path "test") diffPath
 
     // 合併差異到備份
