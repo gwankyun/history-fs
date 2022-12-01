@@ -85,7 +85,7 @@ let merge (path: string) (d: string) =
     let content = File.ReadAllText(join d "data.json")
     let dif = JsonSerializer.Deserialize<Diff>(content)
     let joinPath = join path
-    let delete k = joinPath k |> Entry.create |> Entry.delete
+    let delete k = joinPath k |> Entry.create |> Entry.deleteWith ignore
     dif.Update.Dir |> Map.iter (fun k _ ->
         joinPath k |> Entry.createDirectory |> ignore)
     dif.Update.File |> Map.iter (fun k _ ->
