@@ -16,7 +16,7 @@ if ($args.Length -lt 1) {
 
 $a += $c
 
-if ($c -eq "add" -or $c -eq "diff" -or $c -eq "list") {
+if ($c -eq "add" -or $c -eq "diff" -or $c -eq "list" -or $c -eq "compare") {
     $a += $path
 }
 

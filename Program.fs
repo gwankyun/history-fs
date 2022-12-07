@@ -15,6 +15,7 @@ match args[1] with
     printfn "diff path patch new old"
     printfn "merge path patch"
     printfn "compare path json"
+    printfn "list path"
     exit 0
 | "add" ->
     if args.Length < 4 then
@@ -119,4 +120,18 @@ match args[1] with
         printfn "未知命令"
         exit 1
     exit 0
+| "list" ->
+    if args.Length < 3 then
+        printfn "need 3 args"
+        exit 1
+
+    let path = args[2]
+    let history = join path ".history"
+    if Directory.Exists(history) then
+        let files =
+            Directory.GetFiles(history)
+            |> Array.map (fun i -> i, (new FileInfo(i)).LastWriteTime)
+            |> Array.sortByDescending (fun (i, w) -> w)
+        for (i, _) in files do
+            printfn "%s" (Path.GetRelativePath(history, i))
 | _ -> ()
