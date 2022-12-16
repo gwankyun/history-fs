@@ -76,6 +76,11 @@ let copy (df: Diff) (path: string) (target: string) =
     let jsonContent = JsonSerializer.Serialize(df)
     File.WriteAllText(join target "data.json", jsonContent)
 
+let deleteReadOnly path =
+    let mutable info = new FileInfo(path)
+    if info.Exists && info.IsReadOnly then
+        info.IsReadOnly <- false
+
 /// <summary>合併</summary>
 /// <param name="path">要處理目錄</param>
 /// <param name="d">補丁包路徑</param>
@@ -96,7 +101,9 @@ let merge (path: string) (d: string) =
         printfn "[%s] dest: %s" __LINE__ dest
         if source |> Entry.File |> exists |> not then
             failwith "not exists"
-        File.Copy(source, dest, true))
+        if File.Exists(source) && File.Exists(dest) then
+            deleteReadOnly dest
+            File.Copy(source, dest, true))
     let deleteKey k _ = delete k
     dif.Delete.Dir |> Map.iter deleteKey
     dif.Delete.File |> Map.iter deleteKey

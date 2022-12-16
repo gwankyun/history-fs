@@ -16,15 +16,15 @@ if ($args.Length -lt 1) {
 
 $a += $c
 
-if ($c -eq "add" -or $c -eq "diff" -or $c -eq "list" -or $c -eq "compare") {
+if ($c -eq "add" -or $c -eq "diff" -or $c -eq "list" -or $c -eq "compare" -or $c -eq "merge") {
     $a += $path
 }
 
 $a += $args[1..$args.Length]
 
-if ($c -eq "merge" -and $a.Length -lt 3) {
-    $a += $path
-}
+#if ($c -eq "merge" -and $a.Length -lt 3) {
+#    $a += $path
+#}
 
 Write-Output ("a: " + ($a -join " "))
 

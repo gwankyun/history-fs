@@ -13,6 +13,10 @@ let init (path: string) =
     // 創建文件
     dir |> Entry.iter (fun x ->
         File.WriteAllText(join x "1.txt", "1"))
+        
+//    let mutable info = new FileInfo(join dir.Value "1.txt")
+//    if  not info.IsReadOnly then
+//        info.IsReadOnly <- true
 
     join dir.Value "2"
     |> Entry.createDirectory
